@@ -1,0 +1,39 @@
+{
+    "object": "whatsapp_business_account",
+    "entry": [
+        {
+            "id": "863085716757055",
+            "changes": [
+                {
+                    "value": {
+                        "messaging_product": "whatsapp",
+                        "metadata": {
+                            "display_phone_number": "16505551111",
+                            "phone_number_id": "978514162017347"
+                        },
+                        "contacts": [
+                            {
+                                "profile": {
+                                    "name": "Test User"
+                                },
+                                "wa_id": "56912345678"
+                            }
+                        ],
+                        "messages": [
+                            {
+                                "from": "56912345678",
+                                "id": "wamid.HBgLMTY1MD...",
+                                "timestamp": "1603059201",
+                                "text": {
+                                    "body": "hola, probando webhook!"
+                                },
+                                "type": "text"
+                            }
+                        ]
+                    },
+                    "field": "messages"
+                }
+            ]
+        }
+    ]
+}

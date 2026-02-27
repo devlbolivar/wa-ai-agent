@@ -1,0 +1,11 @@
+INFO:     Started server process [12356]
+INFO:     Waiting for application startup.
+{"timestamp": "2026-02-27T19:17:07.739934Z", "level": "INFO", "name": "app.main", "message": "\ud83d\ude80 Starting WA AI Agent [development]"}
+{"timestamp": "2026-02-27T19:17:07.739934Z", "level": "INFO", "name": "app.main", "message": "\ud83d\udcf1 WhatsApp Phone ID: 978514162017347"}
+{"timestamp": "2026-02-27T19:17:07.739934Z", "level": "INFO", "name": "uvicorn.error", "message": "Application startup complete."}
+{"timestamp": "2026-02-27T19:17:07.740932Z", "level": "INFO", "name": "uvicorn.error", "message": "Uvicorn running on http://127.0.0.1:8003 (Press CTRL+C to quit)"}
+{"timestamp": "2026-02-27T19:17:09.363274Z", "level": "INFO", "name": "uvicorn.error", "message": "Shutting down"}
+{"timestamp": "2026-02-27T19:17:09.472098Z", "level": "INFO", "name": "uvicorn.error", "message": "Waiting for application shutdown."}
+{"timestamp": "2026-02-27T19:17:09.472098Z", "level": "INFO", "name": "app.main", "message": "\ud83d\udc4b Shutting down WA AI Agent"}
+{"timestamp": "2026-02-27T19:17:09.472758Z", "level": "INFO", "name": "uvicorn.error", "message": "Application shutdown complete."}
+{"timestamp": "2026-02-27T19:17:09.472758Z", "level": "INFO", "name": "uvicorn.error", "message": "Finished server process [12356]"}

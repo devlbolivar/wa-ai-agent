@@ -1,1 +1,14 @@
-# pyproject.toml
+[project]
+name = "backend"
+version = "0.1.0"
+description = "WhatsApp AI Agent Backend"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy[asyncio]",
+    "asyncpg",
+    "pydantic-settings",
+    "python-dotenv",
+    "httpx",
+    "alembic"
+]

@@ -1,25 +1,40 @@
-from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from app.config import settings
+"""
+Database configuration and session management.
+Async SQLAlchemy 2.0 with PostgreSQL.
+"""
+
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+
+from app.config import get_settings
+
+settings = get_settings()
 
 # Create async engine
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,  # Log SQL queries if in debug mode
-    future=True,
+    echo=settings.app_debug,  # Log SQL queries in dev
+    pool_size=10,
+    max_overflow=5,
+    pool_pre_ping=True,
 )
 
-# Create async session factory
-async_session_maker = async_sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
+# Session factory
+async_session = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
 )
 
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Dependency function that yields an async database session.
-    """
-    async with async_session_maker() as session:
+
+async def get_db():
+    """FastAPI dependency that provides a DB session per request."""
+    async with async_session() as session:
         try:
             yield session
-        finally:
-            await session.close()
+        except Exception:
+            await session.rollback()
+            raise

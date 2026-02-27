@@ -1,0 +1,16 @@
+[
+  {
+    "id": "6f80e58a-76fd-42cc-b502-88e0a29b3fa5",
+    "role": "user",
+    "content": "hola, probando webhook!",
+    "message_type": "text",
+    "wa_message_id": "wamid.HBgLMTY1MD..."
+  },
+  {
+    "id": "ff040bc1-ff06-4800-91a1-282987dddcd3",
+    "role": "bot",
+    "content": "\ud83d\udce8 Recib\u00ed tu mensaje: \"hola, probando webhook!\"\n\nSoy un bot en modo de pruebas. Pronto tendr\u00e9 inteligencia artificial para responderte de verdad \ud83e\udd16",
+    "message_type": "text",
+    "wa_message_id": "wamid.bot.0383c1c9-101a-440f-9e01-552705d3f2c1"
+  }
+]
