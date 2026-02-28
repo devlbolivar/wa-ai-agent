@@ -72,7 +72,10 @@ class WhatsAppClient:
             },
         }
 
-        return await self._send_request(payload, phone_number_id=phone_number_id)
+        return await self._send_request(
+            payload, 
+            phone_number_id=phone_number_id,
+        )
 
     async def send_reply(
         self,
@@ -102,7 +105,10 @@ class WhatsAppClient:
             },
         }
 
-        return await self._send_request(payload, phone_number_id=phone_number_id)
+        return await self._send_request(
+            payload, 
+            phone_number_id=phone_number_id,
+        )
 
     async def mark_as_read(
         self, 
@@ -121,7 +127,10 @@ class WhatsAppClient:
             "message_id": message_id,
         }
 
-        return await self._send_request(payload, phone_number_id=phone_number_id)
+        return await self._send_request(
+            payload, 
+            phone_number_id=phone_number_id,
+        )
 
     async def send_interactive_buttons(
         self,
@@ -175,9 +184,16 @@ class WhatsAppClient:
             "interactive": interactive,
         }
 
-        return await self._send_request(payload, phone_number_id=phone_number_id)
+        return await self._send_request(
+            payload, 
+            phone_number_id=phone_number_id,
+        )
 
-    async def _send_request(self, payload: dict, phone_number_id: Optional[str] = None) -> dict:
+    async def _send_request(
+        self, 
+        payload: dict, 
+        phone_number_id: Optional[str] = None,
+    ) -> dict:
         """Send a request to the WhatsApp Cloud API."""
         url = self.get_messages_url(phone_number_id)
         

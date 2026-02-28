@@ -53,6 +53,11 @@ class KnowledgeCategoryEnum(str, enum.Enum):
     service = "service"
     policy = "policy"
     promo = "promo"
+    servicios = "servicios"
+    horarios = "horarios"
+    equipo = "equipo"
+    ubicacion = "ubicacion"
+    politicas = "politicas"
 
 class UserRoleEnum(str, enum.Enum):
     owner = "owner"

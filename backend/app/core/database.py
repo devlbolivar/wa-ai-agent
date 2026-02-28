@@ -15,7 +15,7 @@ settings = get_settings()
 
 # Create async engine
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    settings.database_url,
     echo=settings.app_debug,  # Log SQL queries in dev
     pool_size=10,
     max_overflow=5,

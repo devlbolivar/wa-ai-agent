@@ -2,3 +2,5 @@
 .venv/
 __pycache__/
 *.pyc
+architecture.md
+architecture_analysis.md
