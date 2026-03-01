@@ -1,6 +1,6 @@
 """
 WhatsApp AI Agent — FastAPI Application (Week 3).
-Added: Knowledge Base API router.
+Middleware order: BodyCache (first) → Tenant → CORS (outermost).
 """
 
 import logging
@@ -10,9 +10,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.workers.celery_app import celery_app  # Ensure Celery connects to Redis instead of default amqp
 from app.api.v1.webhooks import router as webhooks_router
 from app.api.v1.knowledge_base import router as kb_router
+import app.workers.celery_app  # Ensure Celery instance is registered in the process
 from app.middleware.body_cache import BodyCacheMiddleware
 from app.middleware.tenant import TenantMiddleware
 
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"🚀 Starting WA AI Agent [{settings.app_env}]")
-    logger.info(f"📱 WhatsApp Phone ID: {settings.WHATSAPP_PHONE_NUMBER_ID or 'NOT SET'}")
+    logger.info(f"📱 WhatsApp Phone ID: {settings.whatsapp_phone_number_id or 'NOT SET'}")
     logger.info(f"📐 OpenAI API: {'SET' if settings.openai_api_key else 'NOT SET'}")
     yield
     logger.info("👋 Shutting down WA AI Agent")

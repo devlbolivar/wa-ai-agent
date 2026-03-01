@@ -1,10 +1,12 @@
-# Embedding + retrieval + augment
 """
 RAG Pipeline.
 Manages embeddings and vector search using Qdrant.
 
 Each tenant has its own namespace (collection) in Qdrant:
     tenant_{uuid} → isolated vector space
+
+Uses AsyncQdrantClient for non-blocking operations.
+Uses query_points() (current API, replaces deprecated search()).
 
 Flow:
     1. Admin uploads KB entry → generate embedding → store in Qdrant
@@ -16,7 +18,7 @@ from uuid import UUID
 from dataclasses import dataclass
 
 import httpx
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance,
     VectorParams,
@@ -53,7 +55,7 @@ class RAGPipeline:
     TOP_K = 4  # Number of results to retrieve
 
     def __init__(self):
-        self.qdrant = QdrantClient(
+        self.qdrant = AsyncQdrantClient(
             host=settings.qdrant_host,
             port=settings.qdrant_port,
         )
@@ -71,10 +73,10 @@ class RAGPipeline:
         collection_name = self._collection_name(tenant_id)
 
         try:
-            self.qdrant.get_collection(collection_name)
+            await self.qdrant.get_collection(collection_name)
             logger.debug(f"Collection exists: {collection_name}")
         except Exception:
-            self.qdrant.create_collection(
+            await self.qdrant.create_collection(
                 collection_name=collection_name,
                 vectors_config=VectorParams(
                     size=self.EMBEDDING_DIM,
@@ -139,7 +141,7 @@ class RAGPipeline:
         embedding = await self.generate_embedding(text_to_embed)
 
         # Store in Qdrant with metadata
-        self.qdrant.upsert(
+        await self.qdrant.upsert(
             collection_name=collection_name,
             points=[
                 PointStruct(
@@ -171,6 +173,7 @@ class RAGPipeline:
     ) -> list[RetrievedChunk]:
         """
         Search the tenant's knowledge base for relevant entries.
+        Uses query_points() (current API, replaces deprecated search()).
 
         Args:
             tenant_id: Tenant UUID
@@ -201,9 +204,9 @@ class RAGPipeline:
                 )
 
             # Search Qdrant
-            results = self.qdrant.search(
+            results =  await self.qdrant.query_points(
                 collection_name=collection_name,
-                query_vector=query_embedding,
+                query=query_embedding,
                 query_filter=search_filter,
                 limit=k,
                 score_threshold=0.3,  # Minimum similarity score
@@ -211,13 +214,13 @@ class RAGPipeline:
 
             chunks = [
                 RetrievedChunk(
-                    content=hit.payload.get("content", ""),
-                    title=hit.payload.get("title", ""),
-                    category=hit.payload.get("category", ""),
-                    score=hit.score,
-                    kb_id=hit.payload.get("kb_id", ""),
+                    content=point.payload.get("content", ""),
+                    title=point.payload.get("title", ""),
+                    category=point.payload.get("category", ""),
+                    score=point.score,
+                    kb_id=point.payload.get("kb_id", ""),
                 )
-                for hit in results
+                for point in results.points
             ]
 
             logger.info(
@@ -240,7 +243,7 @@ class RAGPipeline:
         collection_name = self._collection_name(tenant_id)
 
         try:
-            self.qdrant.delete(
+            await self.qdrant.delete(
                 collection_name=collection_name,
                 points_selector=[kb_id],
             )
@@ -263,11 +266,11 @@ class RAGPipeline:
 
         # Delete and recreate collection
         try:
-            self.qdrant.delete_collection(collection_name)
+            await self.qdrant.delete_collection(collection_name)
         except Exception:
             pass
 
-        self.qdrant.create_collection(
+        await self.qdrant.create_collection(
             collection_name=collection_name,
             vectors_config=VectorParams(
                 size=self.EMBEDDING_DIM,

@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # --- WhatsApp Cloud API ---
     WHATSAPP_ACCESS_TOKEN: str = ""
-    WHATSAPP_PHONE_NUMBER_ID: str = ""
+    whatsapp_phone_number_id: str = ""
     WHATSAPP_BUSINESS_ACCOUNT_ID: str = ""
     WHATSAPP_VERIFY_TOKEN: str = ""
     WHATSAPP_APP_SECRET: str = ""

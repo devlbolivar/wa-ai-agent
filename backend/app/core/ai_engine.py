@@ -2,6 +2,7 @@
 AI Engine — OpenAI version.
 Uses GPT-4o-mini for responses + text-embedding-3-small for RAG.
 Single API key for everything.
+tenant_id is always a valid UUID — guaranteed by middleware.
 """
 
 import logging
@@ -34,8 +35,6 @@ class AIResponse:
 # Context Building (Sliding Window)
 # ============================================
 CONTEXT_WINDOW = 12
-SUMMARY_THRESHOLD = 15
-
 
 async def _build_context(
     db: AsyncSession,
@@ -43,7 +42,7 @@ async def _build_context(
 ) -> list[dict]:
     """
     Build conversation context with sliding window.
-    Returns list of {"role": "user"|"assistant", "content": "..."}
+    ≤12 messages → send all. >12 → summarize old + keep last 8.
     """
     result = await db.execute(
         select(Message)
@@ -179,23 +178,23 @@ class AIEngine:
         user_message: str,
         db: AsyncSession,
     ) -> AIResponse:
+        """
+        Generate an AI response. tenant_id is always valid.
+        """
         try:
             # 1. RAG: Retrieve relevant knowledge
-            rag_chunks = []
+            rag_chunks = await rag_pipeline.retrieve(
+                tenant_id=tenant_id,
+                query=user_message,
+                top_k=4,
+            )
             rag_context = ""
 
-            if tenant_id:
-                rag_chunks = await rag_pipeline.retrieve(
-                    tenant_id=tenant_id,
-                    query=user_message,
-                    top_k=4,
+            if rag_chunks:
+                rag_context = "\n\n".join(
+                    f"[{chunk.category.upper()}] {chunk.title}:\n{chunk.content}"
+                    for chunk in rag_chunks
                 )
-
-                if rag_chunks:
-                    rag_context = "\n\n".join(
-                        f"[{chunk.category.upper()}] {chunk.title}:\n{chunk.content}"
-                        for chunk in rag_chunks
-                    )
 
             # 2. Build conversation context (sliding window)
             context = await _build_context(db, conversation_id)
@@ -204,15 +203,13 @@ class AIEngine:
                 context.append({"role": "user", "content": user_message})
 
             # 3. Get tenant name
-            tenant_name = None
-            if tenant_id:
-                from app.models.tenant import Tenant
-                result = await db.execute(
-                    select(Tenant).where(Tenant.id == tenant_id)
-                )
-                tenant = result.scalar_one_or_none()
-                if tenant:
-                    tenant_name = tenant.name
+            from app.models.tenant import Tenant
+
+            result = await db.execute(
+                select(Tenant).where(Tenant.id == tenant_id)
+            )
+            tenant = result.scalar_one_or_none()
+            tenant_name = tenant.name
 
             # 4. Build system prompt
             system_prompt = _build_system_prompt(

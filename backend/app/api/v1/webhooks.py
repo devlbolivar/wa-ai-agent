@@ -1,18 +1,17 @@
 """
 WhatsApp Webhook Endpoints — Week 3.
-Now dispatches messages to Celery for async processing with debounce.
-The webhook returns 200 immediately; AI processing happens in the worker.
+Dispatches messages to Celery for async processing with debounce.
+
+tenant_id is ALWAYS resolved by TenantMiddleware before reaching here.
+If tenant was not found, the middleware already returned 200 to Meta
+and this handler is never called.
 """
 
 import logging
 
-from fastapi import APIRouter, Query, Request, HTTPException, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
+from fastapi import APIRouter, Query, Request, HTTPException
 from app.config import get_settings
-from app.core.database import get_db
-from app.models.tenant import Tenant
+from app.middleware.tenant import get_tenant_id
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -35,13 +34,13 @@ async def verify_webhook(
 
 
 @router.post("/whatsapp")
-async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+async def receive_webhook(request: Request):
     """
     Receive incoming WhatsApp messages.
-    Extracts message data and dispatches to Celery via debounce buffer.
-    Returns 200 immediately — processing is async.
+    tenant_id is guaranteed by TenantMiddleware (never null here).
     """
     body = await request.json()
+    tenant_id = get_tenant_id(request)
 
     try:
         entry = body.get("entry", [])
@@ -54,35 +53,17 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
         value = changes[0].get("value", {})
 
-        # 1. Identify tenant from phone_number_id
-        metadata = value.get("metadata", {})
-        phone_number_id = metadata.get("phone_number_id")
-        
-        if not phone_number_id:
-            logger.warning("No phone_number_id found in webhook payload")
-            return {"status": "ok"}
-
-        result = await db.execute(select(Tenant).where(Tenant.wa_phone_number_id == phone_number_id))
-        tenant = result.scalar_one_or_none()
-        
-        if not tenant:
-            logger.warning(f"Unknown phone_number_id: {phone_number_id}, ignoring messages.")
-            return {"status": "ok"}
-            
-        tenant_id = tenant.id
-
         # Handle incoming messages → dispatch to Celery
         messages = value.get("messages", [])
         for msg in messages:
             _dispatch_message(msg, tenant_id)
 
-        # Handle status updates (no async processing needed)
+        # Handle status updates 
         statuses = value.get("statuses", [])
         for status in statuses:
             _handle_status_update(status)
 
     except Exception as e:
-        # Always return 200 to Meta
         logger.exception(f"Error processing webhook: {e}")
 
     return {"status": "ok"}
@@ -91,7 +72,7 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 def _dispatch_message(msg: dict, tenant_id):
     """
     Extract message data and push to debounce buffer.
-    The Celery task will pick it up after the debounce window.
+    tenant_id is guaranteed to be a valid UUID.
     """
     from app.workers.message_tasks import buffer_message
 
@@ -102,11 +83,13 @@ def _dispatch_message(msg: dict, tenant_id):
     # Extract text based on message type
     text = _extract_text(msg, msg_type)
 
-    logger.info(f"Dispatching message from {sender_phone}: {text[:80]}...")
+    logger.info(
+        f"Dispatching message | from={sender_phone} | "
+        f"tenant={tenant_id} | text={text[:80]}"
+    )
 
-    # Push to debounce buffer → Celery processes after 4 seconds
     buffer_message(
-        tenant_id=str(tenant_id) if tenant_id else "",
+        tenant_id=str(tenant_id),
         contact_phone=sender_phone,
         message_data={
             "text": text,

@@ -28,7 +28,7 @@ class WhatsAppClient:
 
     @property
     def default_phone_number_id(self):
-        return get_settings().WHATSAPP_PHONE_NUMBER_ID
+        return get_settings().whatsapp_phone_number_id
 
     def get_headers(self) -> dict:
         """Dynamically get headers so we always use the freshest token."""

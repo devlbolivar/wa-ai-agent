@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import String, Text, Enum, ForeignKey
+from sqlalchemy import String, Text, Enum, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -18,7 +18,7 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
     payment_account_id: Mapped[str | None] = mapped_column(String(100))
     plan: Mapped[PlanEnum | None] = mapped_column(Enum(PlanEnum))
     settings: Mapped[dict | None] = mapped_column(JSONB)
-
+    is_active: Mapped[bool | None] = mapped_column(Boolean, default=True)
     # Relationships
     contacts = relationship("Contact", back_populates="tenant", cascade="all, delete-orphan")
     conversations = relationship("Conversation", back_populates="tenant", cascade="all, delete-orphan")

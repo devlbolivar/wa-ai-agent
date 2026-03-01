@@ -32,10 +32,10 @@ async def seed():
             print(f"   Phone Number ID: {existing.wa_phone_number_id}")
 
             # Update phone_number_id if it changed
-            if existing.wa_phone_number_id != settings.WHATSAPP_PHONE_NUMBER_ID:
-                existing.wa_phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
+            if existing.wa_phone_number_id != settings.whatsapp_phone_number_id:
+                existing.wa_phone_number_id = settings.whatsapp_phone_number_id
                 await db.commit()
-                print(f"   ↳ Updated phone_number_id to: {settings.WHATSAPP_PHONE_NUMBER_ID}")
+                print(f"   ↳ Updated phone_number_id to: {settings.whatsapp_phone_number_id}")
 
             return
 
@@ -44,7 +44,7 @@ async def seed():
             id=uuid4(),
             name="Dev Clinic (Test)",
             slug="dev",
-            wa_phone_number_id=settings.WHATSAPP_PHONE_NUMBER_ID,
+            wa_phone_number_id=settings.whatsapp_phone_number_id,
             plan="pro",
             # is_active=True,  # This column does not exist in your Tenant model currently
         )

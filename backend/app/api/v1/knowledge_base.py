@@ -1,7 +1,9 @@
-# CRUD base de conocimiento
 """
 Knowledge Base API Endpoints.
 CRUD for KB entries with automatic vectorization in Qdrant.
+
+tenant_id is guaranteed by TenantMiddleware via X-Tenant-ID header.
+Dashboard routes that lack the header get 401 from the middleware.
 """
 
 import logging
@@ -13,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.middleware.tenant import require_tenant
+from app.middleware.tenant import get_tenant_id
 from app.models.knowledge_base import KnowledgeBase
 from app.core.rag_pipeline import rag_pipeline
 
@@ -56,9 +58,9 @@ async def create_kb_entry(
     body: KBCreateRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    tenant_id: UUID = Depends(require_tenant),
 ):
     """Create a new KB entry and vectorize it automatically."""
+    tenant_id = get_tenant_id(request)
     kb_id = str(uuid4())
 
     entry = KnowledgeBase(
@@ -91,9 +93,10 @@ async def list_kb_entries(
     request: Request,
     category: str | None = None,
     db: AsyncSession = Depends(get_db),
-    tenant_id: UUID = Depends(require_tenant),
 ):
     """List all KB entries for the current tenant."""
+    tenant_id = get_tenant_id(request)
+
     query = select(KnowledgeBase).where(
         KnowledgeBase.tenant_id == tenant_id,
         KnowledgeBase.is_active == True,
@@ -113,9 +116,10 @@ async def get_kb_entry(
     kb_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    tenant_id: UUID = Depends(require_tenant),
 ):
     """Get a single KB entry."""
+    tenant_id = get_tenant_id(request)
+
     result = await db.execute(
         select(KnowledgeBase).where(
             KnowledgeBase.id == kb_id,
@@ -136,9 +140,10 @@ async def update_kb_entry(
     body: KBUpdateRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    tenant_id: UUID = Depends(require_tenant),
 ):
     """Update a KB entry and re-vectorize if content changed."""
+    tenant_id = get_tenant_id(request)
+
     result = await db.execute(
         select(KnowledgeBase).where(
             KnowledgeBase.id == kb_id,
@@ -191,9 +196,10 @@ async def delete_kb_entry(
     kb_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    tenant_id: UUID = Depends(require_tenant),
 ):
     """Delete a KB entry from DB and vector store."""
+    tenant_id = get_tenant_id(request)
+
     result = await db.execute(
         select(KnowledgeBase).where(
             KnowledgeBase.id == kb_id,
