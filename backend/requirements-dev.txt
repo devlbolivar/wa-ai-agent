@@ -5,3 +5,5 @@ pytest-cov==4.1.0
 celery>=5.3
 redis>=5.0
 qdrant-client>=1.7
+google-api-python-client>=2.100.0
+google-auth>=2.25.0

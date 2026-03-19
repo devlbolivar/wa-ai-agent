@@ -8,6 +8,7 @@ from app.models.booking import Booking
 from app.models.payment import Payment
 from app.models.knowledge_base import KnowledgeBase
 from app.models.user import User
+from app.models.tenant_calendar import TenantCalendarConfig
 
 __all__ = [
     "Base",
@@ -19,4 +20,5 @@ __all__ = [
     "Payment",
     "KnowledgeBase",
     "User",
+    "TenantCalendarConfig",
 ]

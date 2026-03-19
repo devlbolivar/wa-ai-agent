@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 # Routes that don't need tenant resolution
 TENANT_EXEMPT_PATHS = {
+    "/",
     "/health",
     "/docs",
     "/openapi.json",

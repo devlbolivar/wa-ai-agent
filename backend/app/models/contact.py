@@ -21,5 +21,5 @@ class Contact(Base, UUIDMixin, TimestampMixin):
     # Relationships
     tenant = relationship("Tenant", back_populates="contacts")
     conversations = relationship("Conversation", back_populates="contact", cascade="all, delete-orphan")
-    bookings = relationship("Booking", back_populates="contact", cascade="all, delete-orphan")
+    bookings = relationship("Booking", back_populates="contact", lazy="selectin")
     payments = relationship("Payment", back_populates="contact", cascade="all, delete-orphan")

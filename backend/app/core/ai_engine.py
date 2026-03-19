@@ -3,6 +3,8 @@ AI Engine — OpenAI version.
 Uses GPT-4o-mini for responses + text-embedding-3-small for RAG.
 Single API key for everything.
 tenant_id is always a valid UUID — guaranteed by middleware.
+
+Week 4: Added intent detection + booking engine routing.
 """
 
 import logging
@@ -15,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.core.rag_pipeline import rag_pipeline
+from app.core.intent_detector import detect_intent
+from app.core.booking_engine import booking_engine
 from app.models.message import Message
 
 logger = logging.getLogger(__name__)
@@ -57,14 +61,12 @@ async def _build_context(
     def to_openai_role(role: str) -> str:
         return "assistant" if role in ("bot", "human") else "user"
 
-    # If within window, return all
     if len(messages) <= CONTEXT_WINDOW:
         return [
             {"role": to_openai_role(m.role), "content": m.content}
             for m in messages
         ]
 
-    # Split: old → summary, recent → full
     old_messages = messages[:-8]
     recent_messages = messages[-8:]
 
@@ -143,7 +145,7 @@ async def _call_llm(
         response = await client.post(
             "https://api.openai.com/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {settings.openai_api_key}",
+                "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
                 "Content-Type": "application/json",
             },
             json={
@@ -157,7 +159,6 @@ async def _call_llm(
         data = response.json()
 
     text = data["choices"][0]["message"]["content"]
-
     usage = data.get("usage", {})
     tokens = usage.get("total_tokens", 0)
 
@@ -168,7 +169,7 @@ async def _call_llm(
 # Main Engine Class
 # ============================================
 class AIEngine:
-    """Orchestrates: context → RAG → LLM → response"""
+    """Orchestrates: intent detection → booking OR context → RAG → LLM → response"""
 
     async def generate_response(
         self,
@@ -177,12 +178,119 @@ class AIEngine:
         contact_name: str | None,
         user_message: str,
         db: AsyncSession,
+        contact_id: UUID | None = None,
     ) -> AIResponse:
         """
-        Generate an AI response. tenant_id is always valid.
+        Generate an AI response.
+
+        Flow:
+        1. Check for active booking → delegate to booking engine
+        2. Detect intent on new messages
+        3. If booking intent → start booking flow
+        4. Otherwise → RAG + GPT (existing logic)
         """
         try:
-            # 1. RAG: Retrieve relevant knowledge
+            # ==========================================
+            # WEEK 4: Booking flow check
+            # ==========================================
+
+            # 1. If there's an active booking flow, delegate entirely
+            booking_state = await booking_engine.get_state(conversation_id)
+            if booking_state:
+                result = await booking_engine.process_message(
+                    db=db,
+                    tenant_id=tenant_id,
+                    contact_id=contact_id,
+                    conversation_id=conversation_id,
+                    message=user_message,
+                )
+                return AIResponse(
+                    text=result["response"],
+                    confidence=0.95,
+                    tokens_used=0,
+                    sources_used=0,
+                    intent="BOOKING_FLOW",
+                )
+
+            # 2. Detect intent on new messages
+            context = await _build_context(db, conversation_id)
+            detected = await detect_intent(user_message, context)
+
+            logger.info(
+                f"Intent detected: {detected.intent} "
+                f"(service={detected.service}, "
+                f"date={detected.preferred_date}, "
+                f"confidence={detected.confidence:.2f})"
+            )
+
+            # 3. Route booking-related intents
+            if detected.intent == "BOOK_APPOINTMENT":
+                result = await booking_engine.process_message(
+                    db=db,
+                    tenant_id=tenant_id,
+                    contact_id=contact_id,
+                    conversation_id=conversation_id,
+                    message=user_message,
+                    detected_service=detected.service,
+                    detected_date=detected.preferred_date,
+                    detected_time=detected.preferred_time,
+                )
+                return AIResponse(
+                    text=result["response"],
+                    confidence=0.95,
+                    tokens_used=50,
+                    sources_used=0,
+                    intent="BOOK_APPOINTMENT",
+                )
+
+            if detected.intent == "CHECK_AVAILABILITY":
+                result = await booking_engine.process_message(
+                    db=db,
+                    tenant_id=tenant_id,
+                    contact_id=contact_id,
+                    conversation_id=conversation_id,
+                    message=user_message,
+                    detected_service=detected.service,
+                    detected_date=detected.preferred_date,
+                )
+                return AIResponse(
+                    text=result["response"],
+                    confidence=0.9,
+                    tokens_used=50,
+                    sources_used=0,
+                    intent="CHECK_AVAILABILITY",
+                )
+
+            if detected.intent == "CANCEL_APPOINTMENT":
+                return AIResponse(
+                    text=(
+                        "Para cancelar o reagendar tu cita, por favor escríbenos "
+                        "indicando tu nombre y la fecha de la cita que quieres cambiar. "
+                        "Te ayudaremos lo antes posible 📋"
+                    ),
+                    confidence=0.9,
+                    tokens_used=50,
+                    sources_used=0,
+                    intent="CANCEL_APPOINTMENT",
+                )
+
+            if detected.intent == "HUMAN_ESCALATION":
+                return AIResponse(
+                    text=(
+                        "Entiendo, te voy a comunicar con nuestro equipo. "
+                        "Un momento por favor 🙏"
+                    ),
+                    confidence=0.95,
+                    tokens_used=50,
+                    sources_used=0,
+                    intent="HUMAN_ESCALATION",
+                )
+
+            # ==========================================
+            # DEFAULT: RAG + GPT response (existing Week 3 logic)
+            # ==========================================
+
+            # 4. RAG: Retrieve relevant knowledge
             rag_chunks = await rag_pipeline.retrieve(
                 tenant_id=tenant_id,
                 query=user_message,
@@ -196,13 +304,11 @@ class AIEngine:
                     for chunk in rag_chunks
                 )
 
-            # 2. Build conversation context (sliding window)
-            context = await _build_context(db, conversation_id)
-
+            # 5. Add user message to context if not already there
             if not context or context[-1].get("content") != user_message:
                 context.append({"role": "user", "content": user_message})
 
-            # 3. Get tenant name
+            # 6. Get tenant name
             from app.models.tenant import Tenant
 
             result = await db.execute(
@@ -211,14 +317,14 @@ class AIEngine:
             tenant = result.scalar_one_or_none()
             tenant_name = tenant.name
 
-            # 4. Build system prompt
+            # 7. Build system prompt
             system_prompt = _build_system_prompt(
                 tenant_name=tenant_name,
                 contact_name=contact_name,
                 rag_context=rag_context,
             )
 
-            # 5. Dynamic max_tokens based on conversation length
+            # 8. Dynamic max_tokens based on conversation length
             msg_count = len(context)
             if msg_count <= 15:
                 max_tokens = 400
@@ -227,14 +333,14 @@ class AIEngine:
             else:
                 max_tokens = 120
 
-            # 6. Call LLM
+            # 9. Call LLM
             response_text, tokens_used = await _call_llm(
                 system_prompt=system_prompt,
                 conversation_context=context,
                 max_tokens=max_tokens,
             )
 
-            # 7. Confidence based on RAG relevance
+            # 10. Confidence based on RAG relevance
             confidence = 0.5
             if rag_chunks:
                 top_score = rag_chunks[0].score
@@ -249,7 +355,8 @@ class AIEngine:
                 f"AI response: {tokens_used} tokens, "
                 f"confidence={confidence:.2f}, "
                 f"rag_chunks={len(rag_chunks)}, "
-                f"context_msgs={msg_count}"
+                f"context_msgs={msg_count}, "
+                f"intent={detected.intent}"
             )
 
             return AIResponse(
@@ -257,6 +364,7 @@ class AIEngine:
                 confidence=confidence,
                 tokens_used=tokens_used,
                 sources_used=len(rag_chunks),
+                intent=detected.intent,
             )
 
         except httpx.HTTPStatusError as e:

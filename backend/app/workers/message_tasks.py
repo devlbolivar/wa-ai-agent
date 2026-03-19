@@ -20,7 +20,7 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 DEBOUNCE_WINDOW = 4  # seconds
 
@@ -223,6 +223,7 @@ async def _async_process_message(
             contact_name=contact.name,
             user_message=combined_text,
             db=db,
+            contact_id=contact.id,
         )
 
         # 6. Send response via WhatsApp

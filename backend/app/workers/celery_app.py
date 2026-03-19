@@ -17,8 +17,8 @@ settings = get_settings()
 
 celery_app = Celery(
     "wa_agent",
-    broker=settings.redis_url,
-    backend=settings.redis_url,
+    broker=settings.REDIS_URL,
+    backend=settings.REDIS_URL,
 )
 
 celery_app.conf.update(

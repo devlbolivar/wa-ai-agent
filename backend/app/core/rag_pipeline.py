@@ -59,7 +59,7 @@ class RAGPipeline:
             host=settings.qdrant_host,
             port=settings.qdrant_port,
         )
-        self.openai_api_key = settings.openai_api_key
+        self.openai_api_key = settings.OPENAI_API_KEY
 
     # ============================================
     # Collection Management (per tenant)

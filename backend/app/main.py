@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info(f"🚀 Starting WA AI Agent [{settings.app_env}]")
     logger.info(f"📱 WhatsApp Phone ID: {settings.whatsapp_phone_number_id or 'NOT SET'}")
-    logger.info(f"📐 OpenAI API: {'SET' if settings.openai_api_key else 'NOT SET'}")
+    logger.info(f"📐 OpenAI API: {'SET' if settings.OPENAI_API_KEY else 'NOT SET'}")
     yield
     logger.info("👋 Shutting down WA AI Agent")
 

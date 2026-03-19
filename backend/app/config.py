@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     database_url_sync: str = "postgresql://postgres:password@localhost:5432/app_db"
 
     # --- Redis ---
-    redis_url: str = "redis://localhost:6379/0"
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     # --- WhatsApp Cloud API ---
     WHATSAPP_ACCESS_TOKEN: str = ""
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     qdrant_port: int = 6333
 
     # --- OpenAI (Embeddings + Chat) ---
-    openai_api_key: str = ""
+    OPENAI_API_KEY: str = ""
 
     @property
     def whatsapp_api_url(self) -> str:

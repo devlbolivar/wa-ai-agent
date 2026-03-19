@@ -10,5 +10,6 @@ dependencies = [
     "pydantic-settings",
     "python-dotenv",
     "httpx",
-    "alembic"
+    "alembic",
+    "openai"
 ]

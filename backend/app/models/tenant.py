@@ -23,7 +23,13 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
     contacts = relationship("Contact", back_populates="tenant", cascade="all, delete-orphan")
     conversations = relationship("Conversation", back_populates="tenant", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="tenant", cascade="all, delete-orphan")
-    bookings = relationship("Booking", back_populates="tenant", cascade="all, delete-orphan")
+    bookings = relationship("Booking", back_populates="tenant", lazy="selectin")
+    calendar_config = relationship(
+        "TenantCalendarConfig",
+        back_populates="tenant",
+        uselist=False,  # One-to-one
+        lazy="selectin",
+    )
     payments = relationship("Payment", back_populates="tenant", cascade="all, delete-orphan")
     knowledge_bases = relationship("KnowledgeBase", back_populates="tenant", cascade="all, delete-orphan")
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
