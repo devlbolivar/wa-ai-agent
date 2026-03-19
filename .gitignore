@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 architecture.md
 architecture_analysis.md
+backend/secrets/
+backend/scripts/seed_*.py
+seed_*.py
